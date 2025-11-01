@@ -54,7 +54,7 @@
   <button onclick="swapSkim()" id="skimBtn" disabled>Cash Out Skim (Owner)</button>
   <div id="status">Connect your wallet to start!</div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/4.0.3/web3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/4.3.0/web3.min.js"></script>
   <script>
     const TUSD_ADDRESS = "0xEc7B2ebe558424d0d3929c581e0018d2bEDe8eF6";
     const TIFFY_ADDRESS = "0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";
@@ -87,7 +87,7 @@
           } catch (error) {
             console.error("BalanceOf Error:", error);
             document.getElementById("status").innerText = `TiffyAI balance check failed: ${error.message}. Try manual burn.`;
-            document.getElementById("redeemBtn").disabled = false; // Allow burn even if balance check fails
+            document.getElementById("redeemBtn").disabled = false; // Allow manual burn
           }
         } catch (error) {
           document.getElementById("status").innerText = `Error: ${error.message}`;
