@@ -78,10 +78,17 @@
           userAddress = (await web3.eth.getAccounts())[0];
           tusdContract = new web3.eth.Contract(TUSD_ABI, TUSD_ADDRESS);
           tiffyContract = new web3.eth.Contract(TIFFY_ABI, TIFFY_ADDRESS);
-          const tiffyBalance = await tiffyContract.methods.balanceOf(userAddress).call();
-          document.getElementById("status").innerText = `Connected: ${userAddress}\nTiffyAI Balance: ${web3.utils.fromWei(tiffyBalance, "ether")} TIFFY`;
-          document.getElementById("redeemBtn").disabled = tiffyBalance < web3.utils.toWei("1", "ether");
-          document.getElementById("skimBtn").disabled = userAddress.toLowerCase() !== "0x2a234d5cc7431b824723c84c8605fd3968bf0255".toLowerCase();
+          let tiffyBalance;
+          try {
+            tiffyBalance = await tiffyContract.methods.balanceOf(userAddress).call();
+            document.getElementById("status").innerText = `Connected: ${userAddress}\nTiffyAI Balance: ${web3.utils.fromWei(tiffyBalance, "ether")} TIFFY`;
+            document.getElementById("redeemBtn").disabled = tiffyBalance < web3.utils.toWei("1", "ether");
+            document.getElementById("skimBtn").disabled = userAddress.toLowerCase() !== "0x2a234d5cc7431b824723c84c8605fd3968bf0255".toLowerCase();
+          } catch (error) {
+            console.error("BalanceOf Error:", error);
+            document.getElementById("status").innerText = `TiffyAI balance check failed: ${error.message}. Try manual burn.`;
+            document.getElementById("redeemBtn").disabled = false; // Allow burn even if balance check fails
+          }
         } catch (error) {
           document.getElementById("status").innerText = `Error: ${error.message}`;
         }
