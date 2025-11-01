@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TiffyAI Empire - Burn & Cash Out</title>
+  <style>
+    body {
+      background: #1a1a1a;
+      color: #00ff88;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 2.5em;
+      text-shadow: 0 0 10px #00ff88;
+    }
+    button {
+      background: #00ff88;
+      color: #1a1a1a;
+      border: none;
+      padding: 15px 30px;
+      margin: 10px;
+      font-size: 1.2em;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: all 0.3s;
+    }
+    button:hover {
+      background: #ff0077;
+      color: #fff;
+      box-shadow: 0 0 15px #ff0077;
+    }
+    #status {
+      margin-top: 20px;
+      font-size: 1.1em;
+      color: #fff;
+    }
+    a {
+      color: #00ff88;
+      text-decoration: none;
+    }
+    a:hover {
+      color: #ff0077;
+    }
+  </style>
+</head>
+<body>
+  <h1>TiffyAI Empire 🔥</h1>
+  <p>Burn TiffyAI, Get TUSD, Cash Out to USDT. No Scams. Verified: <a href="https://bscscan.com/address/0xEc7B2ebe558424d0d3929c581e0018d2bEDe8eF6" target="_blank">BSCScan</a></p>
+  <button onclick="connectWallet()">Connect Wallet</button>
+  <button onclick="redeemTiffy()" id="redeemBtn" disabled>Burn 1 TiffyAI → 20 TUSD</button>
+  <button onclick="swapSkim()" id="skimBtn" disabled>Cash Out Skim (Owner)</button>
+  <div id="status">Connect your wallet to start!</div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/4.0.3/web3.min.js"></script>
+  <script>
+    const TUSD_ADDRESS = "0xEc7B2ebe558424d0d3929c581e0018d2bEDe8eF6";
+    const TIFFY_ADDRESS = "0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";
+    const TUSD_ABI = [
+      "function redeemTiffy(uint256 amount) external",
+      "function swapSkimToUSDT() external",
+      "function balanceOf(address account) view returns (uint256)"
+    ];
+    const TIFFY_ABI = [
+      "function balanceOf(address account) view returns (uint256)",
+      "function allowance(address owner, address spender) view returns (uint256)",
+      "function approve(address spender, uint256 amount) external returns (bool)"
+    ];
+    let web3, tusdContract, tiffyContract, userAddress;
+
+    async function connectWallet() {
+      if (window.ethereum) {
+        try {
+          web3 = new Web3(window.ethereum);
+          await window.ethereum.request({ method: "eth_requestAccounts" });
+          userAddress = (await web3.eth.getAccounts())[0];
+          tusdContract = new web3.eth.Contract(TUSD_ABI, TUSD_ADDRESS);
+          tiffyContract = new web3.eth.Contract(TIFFY_ABI, TIFFY_ADDRESS);
+          const tiffyBalance = await tiffyContract.methods.balanceOf(userAddress).call();
+          document.getElementById("status").innerText = `Connected: ${userAddress}\nTiffyAI Balance: ${web3.utils.fromWei(tiffyBalance, "ether")} TIFFY`;
+          document.getElementById("redeemBtn").disabled = tiffyBalance < web3.utils.toWei("1", "ether");
+          document.getElementById("skimBtn").disabled = userAddress.toLowerCase() !== "0x2a234d5cc7431b824723c84c8605fd3968bf0255".toLowerCase();
+        } catch (error) {
+          document.getElementById("status").innerText = `Error: ${error.message}`;
+        }
+      } else {
+        document.getElementById("status").innerText = "Install MetaMask!";
+      }
+    }
+
+    async function redeemTiffy() {
+      try {
+        document.getElementById("status").innerText = "Approving TiffyAI for burning...";
+        await tiffyContract.methods.approve(TUSD_ADDRESS, web3.utils.toWei("1", "ether")).send({ from: userAddress });
+        document.getElementById("status").innerText = "Burning 1 TiffyAI...";
+        await tusdContract.methods.redeemTiffy(web3.utils.toWei("1", "ether")).send({ from: userAddress });
+        const tusdBalance = await tusdContract.methods.balanceOf(userAddress).call();
+        document.getElementById("status").innerText = `Success! You got 20 TUSD. Balance: ${web3.utils.fromWei(tusdBalance, "ether")} TUSD`;
+      } catch (error) {
+        document.getElementById("status").innerText = `Error: ${error.message}`;
+      }
+    }
+
+    async function swapSkim() {
+      try {
+        document.getElementById("status").innerText = "Cashing out skim to USDT...";
+        await tusdContract.methods.swapSkimToUSDT().send({ from: userAddress });
+        document.getElementById("status").innerText = "Skim cashed out! Check skimWallet for USDT.";
+      } catch (error) {
+        document.getElementById("status").innerText = `Error: ${error.message}`;
+      }
+    }
+  </script>
+</body>
+</html>
