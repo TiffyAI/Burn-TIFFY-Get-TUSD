@@ -2,430 +2,196 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
   <title>TiffyAI Empire — Neon Burn & Redeem</title>
   <style>
     :root{
       --electric-blue:#00d9ff;
       --shocking-pink:#ff007f;
       --bg:#07060a;
-      --glass: rgba(255,255,255,0.04);
-      --glass-border: rgba(255,255,255,0.12);
+      --glass:rgba(255,255,255,0.06);
     }
-    html,body{height:100%;margin:0;background:linear-gradient(135deg,#04040a,#12002b 60%);font-family:Inter,Segoe UI,Arial,sans-serif;color:#dff;display:flex;align-items:center;justify-content:center}
-    .wrap{width:980px;max-width:96%;display:grid;grid-template-columns:1fr 360px;gap:24px}
-    h1{font-family:Orbitron,monospace;color:var(--shocking-pink);text-shadow:0 0 18px var(--shocking-pink),0 0 36px var(--electric-blue);margin:0 0 8px;font-size:28px}
-    .panel{background:var(--glass);border-radius:16px;padding:20px;border:1px solid var(--glass-border);backdrop-filter:blur(8px);}
-    /* glowing border pulse */
-    .neon {
-      position:relative; overflow:visible;
+    body{
+      margin:0;
+      background:radial-gradient(circle at top left,#05020b 0%,#0c0021 60%);
+      font-family:"Inter","Segoe UI",sans-serif;
+      color:#eef;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      min-height:100vh;
+      padding:16px;
+      overflow-x:hidden;
     }
-    .neon::before {
-      content:""; position:absolute; inset:-2px; border-radius:18px;
-      background: linear-gradient(90deg, rgba(0,217,255,0.15), rgba(255,0,127,0.12));
-      filter: blur(14px); opacity:0.9; z-index:-2;
-      animation: pulse 3s infinite;
+    h1{
+      color:var(--shocking-pink);
+      text-shadow:0 0 18px var(--shocking-pink),0 0 36px var(--electric-blue);
+      margin-bottom:8px;
+      font-size:1.8em;
+      text-align:center;
     }
-    @keyframes pulse { 0% {transform: scale(0.99); opacity:0.7} 50% {transform: scale(1.02); opacity:1} 100% {transform: scale(0.99); opacity:0.7} }
-    /* layout pieces */
-    .left { padding:20px; }
-    .right { padding:20px; display:flex;flex-direction:column; gap:12px; align-items:stretch; }
-    label{display:block;text-align:left;color:#cfe;margin-bottom:6px;font-size:13px}
-    .input, input[type=number] {
-      width:100%; padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.06); background:rgba(0,0,0,0.35); color:#fff; font-size:16px; outline:none;
-      box-shadow: inset 0 -6px 12px rgba(0,0,0,0.35);
+    .panel{
+      background:var(--glass);
+      border-radius:16px;
+      padding:16px;
+      width:100%;
+      max-width:420px;
+      backdrop-filter:blur(8px);
+      border:1px solid rgba(255,255,255,0.12);
+      box-shadow:0 0 20px rgba(0,217,255,0.12);
+      margin-bottom:18px;
     }
-    .btn {
-      background: linear-gradient(90deg,var(--electric-blue),var(--shocking-pink));
-      border: none; color: #071017; padding:12px 14px; border-radius:10px; font-weight:700; cursor:pointer;
-      box-shadow: 0 8px 30px rgba(255,0,127,0.06);
+    .btn{
+      background:linear-gradient(90deg,var(--electric-blue),var(--shocking-pink));
+      border:none;
+      border-radius:10px;
+      color:#000;
+      font-weight:700;
+      padding:14px;
+      font-size:1rem;
+      width:100%;
+      margin-top:10px;
+      cursor:pointer;
     }
-    .btn:disabled{opacity:0.4;cursor:not-allowed}
-    .small{font-size:13px;color:#bcd}
-    .row{display:flex;gap:12px;align-items:center}
-    .balance { font-weight:700; color:var(--electric-blue); }
-    .tusd { color:var(--shocking-pink); font-weight:700 }
-    .history { max-height:320px; overflow:auto; padding:8px; border-radius:8px; background:rgba(0,0,0,0.24); border:1px solid rgba(255,255,255,0.02) }
-    .tx { padding:8px;border-bottom:1px dashed rgba(255,255,255,0.03); font-size:13px; color:#dde; display:flex;justify-content:space-between;align-items:center }
-    .tx .meta { color:#99c; font-size:12px }
-    .gas { font-size:13px; color:#fff; background:linear-gradient(90deg, rgba(0,217,255,0.06), rgba(255,0,127,0.06)); padding:8px;border-radius:8px; }
-    a.link { color:var(--electric-blue); text-decoration:none; font-weight:600 }
-    @media(max-width:880px){ .wrap{grid-template-columns:1fr; padding:12px} .right{order:2} }
+    .btn:disabled{opacity:.45;cursor:not-allowed;}
+    label{display:block;margin-top:14px;margin-bottom:6px;font-size:.9rem;}
+    input{
+      width:100%;
+      padding:12px;
+      border-radius:10px;
+      border:none;
+      background:rgba(0,0,0,0.4);
+      color:#fff;
+      font-size:16px;
+      outline:none;
+    }
+    .small{font-size:.85rem;color:#bcd;}
+    .row{display:flex;justify-content:space-between;align-items:center;margin-top:8px;}
+    .balance{color:var(--electric-blue);}
+    .tusd{color:var(--shocking-pink);}
+    .gas{font-size:.8rem;background:rgba(255,255,255,0.05);padding:8px;border-radius:8px;margin-top:8px;}
+    .history{max-height:220px;overflow:auto;background:rgba(0,0,0,0.25);border-radius:8px;padding:8px;margin-top:8px;}
+    .tx{padding:6px;border-bottom:1px dashed rgba(255,255,255,0.1);font-size:.8rem;}
+    @media(max-width:480px){
+      h1{font-size:1.6em;}
+      .panel{padding:14px;}
+      input{font-size:15px;}
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="panel neon left">
-      <h1>TiffyAI Empire ⚡</h1>
-      <div class="small">Burn TIFFY → Receive TUSD <strong>(1 TIFFY → 20 TUSD)</strong> • Verify contract: <a id="explorerLink" class="link" href="#" target="_blank" rel="noopener">BscScan</a></div>
-      <hr style="opacity:.06;margin:16px 0">
-      <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
-        <button id="connectBtn" class="btn">🔗 Connect Wallet</button>
-        <div style="flex:1">
-          <div class="small">Network:</div>
-          <div id="networkName" class="small">—</div>
-        </div>
-      </div>
+  <h1>TiffyAI Empire ⚡</h1>
+  <div class="panel">
+    <div class="small" style="text-align:center">
+      Burn TIFFY → Receive TUSD (1:20)<br>
+      Verified: <a id="explorerLink" href="#" style="color:var(--electric-blue)">BscScan</a>
+    </div>
+    <button id="connectBtn" class="btn">🔗 Connect Wallet</button>
 
-      <label>Amount to burn (TIFFY)</label>
-      <input id="burnAmount" type="number" step="0.000001" placeholder="Enter TIFFY amount" class="input"/>
-
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
-        <div class="small">You will receive (preview)</div>
-        <div id="tusdPreview" class="tusd">0.0000 TUSD</div>
-      </div>
-
-      <div style="display:flex;gap:12px;margin-top:14px">
-        <button id="estimateBtn" class="btn" style="flex:1">⚡ Estimate Gas</button>
-        <button id="redeemBtn" class="btn" style="flex:1" disabled>🔥 Burn & Redeem</button>
-      </div>
-
-      <div style="display:flex;gap:12px;margin-top:12px;align-items:center">
-        <div style="flex:1">
-          <div class="small">TIFFY Balance</div>
-          <div id="tiffyBal" class="balance">—</div>
-        </div>
-        <div style="flex:1">
-          <div class="small">TUSD Balance (you)</div>
-          <div id="tusdBal" class="tusd">—</div>
-        </div>
-      </div>
-
-      <div style="margin-top:14px">
-        <div class="small">Gas estimate</div>
-        <div id="gasInfo" class="gas">Click "Estimate Gas" to get numbers</div>
-      </div>
-
-      <div style="margin-top:14px">
-        <button id="skimBtn" class="btn" disabled>💼 Owner: Cash Out Skim</button>
-      </div>
-
-      <div id="status" class="small" style="margin-top:12px;color:#cfe">Status: idle</div>
+    <label>Amount to burn (TIFFY)</label>
+    <input id="burnAmount" type="number" step="0.000001" placeholder="Enter TIFFY amount"/>
+    <div class="row">
+      <div class="small">You’ll receive:</div>
+      <div id="tusdPreview" class="tusd">0 TUSD</div>
     </div>
 
-    <div class="panel neon right">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div>
-          <div class="small">Transaction History (local)</div>
-          <div class="small" style="color:#9cf">Recent burns & owner skims are recorded locally</div>
-        </div>
-        <div><button id="clearHistory" class="btn" style="padding:6px 10px;font-size:13px;background:rgba(255,255,255,0.06)">Clear</button></div>
-      </div>
+    <button id="estimateBtn" class="btn" disabled>⚡ Estimate Gas</button>
+    <button id="redeemBtn" class="btn" disabled>🔥 Burn & Redeem</button>
+    <button id="skimBtn" class="btn" disabled style="background:linear-gradient(90deg,#222,var(--shocking-pink));">💼 Owner Cash Out</button>
 
-      <div class="history" id="historyList"></div>
+    <div class="row"><div class="small">TIFFY:</div><div id="tiffyBal" class="balance">—</div></div>
+    <div class="row"><div class="small">TUSD:</div><div id="tusdBal" class="tusd">—</div></div>
 
-      <hr style="opacity:.06;margin:14px 0">
-      <div class="small" style="margin-bottom:8px">Quick actions / info</div>
-      <div style="display:flex;gap:8px">
-        <button id="refreshBtn" class="btn" style="flex:1;background:linear-gradient(90deg,#00d9ff,#00a8ff)">🔄 Refresh Balances</button>
-        <button id="copyAddr" class="btn" style="flex:1;background:linear-gradient(90deg,#ff4da6,#ff007f)">Copy Swap Addr</button>
-      </div>
+    <div id="gasInfo" class="gas">Gas info...</div>
+    <div id="status" class="small" style="margin-top:8px;">Status: idle</div>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <div class="small">Local Transactions</div>
+      <button id="clearHistory" class="btn" style="padding:6px 10px;font-size:.8rem;background:rgba(255,255,255,0.1);width:auto;">Clear</button>
     </div>
+    <div class="history" id="historyList"></div>
   </div>
 
 <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
 <script>
-/* -----------------------------
-   CONFIG - update if needed
-   ----------------------------- */
-const SWAP_CONTRACT_ADDRESS = "0xEc7B2ebe558424d0d3929c581e0018d2bEDe8eF6"; // swap contract with redeemTiffy()
-const TIFFY_ADDRESS = "0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";      // TIFFY token
-const TUSD_TOKEN_ADDRESS = null; // optional: set your TUSD token contract address (if known). If null, TUSD balance may show N/A.
-const OWNER_ADDRESS = "0x2a234d5cc7431b824723c84c8605fd3968bf0255".toLowerCase();
+/* --- addresses & ABIs same as before --- */
+const SWAP_CONTRACT_ADDRESS="0xEc7B2ebe558424d0d3929c581e0018d2bEDe8eF6";
+const TIFFY_ADDRESS="0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";
+const OWNER_ADDRESS="0x2a234d5cc7431b824723c84c8605fd3968bf0255".toLowerCase();
+const RATE=20;
 
-/* -----------------------------
-   ABIs (minimal)
-   ----------------------------- */
-const ERC20_ABI = [
-  { "constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function" },
-  { "constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"type":"function" },
-  { "constant":true,"inputs":[{"name":"_owner","type":"address"},{"name":"_spender","type":"address"}],"name":"allowance","outputs":[{"name":"remaining","type":"uint256"}],"type":"function" },
-  { "constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function" }
-];
+const ERC20_ABI=[{"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function"},{"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function"}];
+const SWAP_ABI=[{"inputs":[{"name":"amount","type":"uint256"}],"name":"redeemTiffy","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"swapSkimToUSDT","outputs":[],"stateMutability":"nonpayable","type":"function"}];
 
-const SWAP_ABI = [
-  { "inputs":[{"name":"amount","type":"uint256"}],"name":"redeemTiffy","outputs":[],"stateMutability":"nonpayable","type":"function" },
-  { "inputs":[],"name":"swapSkimToUSDT","outputs":[],"stateMutability":"nonpayable","type":"function" }
-];
+let web3,userAddr,tiffyContract,swapContract;
 
-/* -----------------------------
-   UI elements
-   ----------------------------- */
-const connectBtn = document.getElementById('connectBtn');
-const redeemBtn = document.getElementById('redeemBtn');
-const estimateBtn = document.getElementById('estimateBtn');
-const skimBtn = document.getElementById('skimBtn');
-const burnInput = document.getElementById('burnAmount');
-const tusdPreview = document.getElementById('tusdPreview');
-const tiffyBalEl = document.getElementById('tiffyBal');
-const tusdBalEl = document.getElementById('tusdBal');
-const statusEl = document.getElementById('status');
-const historyList = document.getElementById('historyList');
-const clearHistoryBtn = document.getElementById('clearHistory');
-const refreshBtn = document.getElementById('refreshBtn');
-const copyAddr = document.getElementById('copyAddr');
-const gasInfo = document.getElementById('gasInfo');
-const explorerLink = document.getElementById('explorerLink');
-const networkName = document.getElementById('networkName');
+const connectBtn=document.getElementById("connectBtn");
+const estimateBtn=document.getElementById("estimateBtn");
+const redeemBtn=document.getElementById("redeemBtn");
+const skimBtn=document.getElementById("skimBtn");
+const burnInput=document.getElementById("burnAmount");
+const tusdPreview=document.getElementById("tusdPreview");
+const tiffyBalEl=document.getElementById("tiffyBal");
+const tusdBalEl=document.getElementById("tusdBal");
+const statusEl=document.getElementById("status");
+const gasInfo=document.getElementById("gasInfo");
+const historyList=document.getElementById("historyList");
+const clearHistory=document.getElementById("clearHistory");
+const explorerLink=document.getElementById("explorerLink");
+explorerLink.href=`https://bscscan.com/address/${SWAP_CONTRACT_ADDRESS}`;
 
-explorerLink.href = `https://bscscan.com/address/${SWAP_CONTRACT_ADDRESS}`;
-explorerLink.innerText = `${SWAP_CONTRACT_ADDRESS}`;
+function setStatus(msg){statusEl.innerText='Status: '+msg;}
+function storeTx(tx){const list=JSON.parse(localStorage.getItem('tiffy_history')||'[]');list.unshift(tx);localStorage.setItem('tiffy_history',JSON.stringify(list));renderHistory();}
+function renderHistory(){const list=JSON.parse(localStorage.getItem('tiffy_history')||'[]');historyList.innerHTML=list.map(x=>`<div class="tx">${x.type}: ${x.amount} TIFFY → ${x.tusd} TUSD<br><span class="small">${new Date(x.ts).toLocaleString()} (${x.status})</span></div>`).join('')||'<div class="small">None yet</div>';}
 
-/* -----------------------------
-   App State
-   ----------------------------- */
-let web3, userAddr, tiffyContract, tusdContract, swapContract;
-let tiffyDecimals = 18, tusdDecimals = 18;
-const RATE = 20; // 1 Tiffy => 20 TUSD (per user's request)
-let pollHandle = null;
-
-/* -----------------------------
-   Utilities (careful BN math)
-   ----------------------------- */
-function toBN(n){ return web3.utils.toBN(n); }
-function pow10(e){ return web3.utils.toBN(10).pow(web3.utils.toBN(e)); }
-function setStatus(msg){ statusEl.innerText = 'Status: ' + msg; }
-function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-function humanAmount(bnUnits, decimals){
-  const base = pow10(decimals);
-  const whole = bnUnits.div(base).toString();
-  const frac = bnUnits.mod(base).toString().padStart(decimals,'0').slice(0,6);
-  return `${whole}.${frac}`.replace(/\.?0+$/,'');
-}
-function storeTx(record){
-  try {
-    const list = JSON.parse(localStorage.getItem('tiffy_history')||'[]');
-    list.unshift(record);
-    if(list.length>200) list.pop();
-    localStorage.setItem('tiffy_history', JSON.stringify(list));
-    renderHistory();
-  } catch(e){}
-}
-function updateTxStatus(txHash, status){
-  try {
-    const list = JSON.parse(localStorage.getItem('tiffy_history')||'[]');
-    for(let r of list){ if(r.txHash===txHash){ r.status = status; r.updated = Date.now(); } }
-    localStorage.setItem('tiffy_history', JSON.stringify(list));
-    renderHistory();
-  } catch(e){}
-}
-function renderHistory(){
-  const list = JSON.parse(localStorage.getItem('tiffy_history')||'[]');
-  historyList.innerHTML = '';
-  if(list.length===0){ historyList.innerHTML = '<div class="small" style="padding:16px;color:#9cf">No local tx history yet</div>'; return; }
-  for(const r of list){
-    const el = document.createElement('div'); el.className='tx';
-    const left = document.createElement('div');
-    left.innerHTML = `<div style="font-weight:700">${r.type} ${r.amount} TIFFY → ${r.tusd} TUSD</div><div class="meta">${new Date(r.ts).toLocaleString()}</div>`;
-    const right = document.createElement('div'); right.style.textAlign='right';
-    right.innerHTML = `<div style="font-weight:700;color:${r.status==='confirmed'?'#7ef':'#ffd'}">${r.status}</div><div style="margin-top:6px"><a class="link" target="_blank" href="https://bscscan.com/tx/${r.txHash}">${r.txHash? r.txHash.slice(0,8)+'...':'pending'}</a></div>`;
-    el.appendChild(left); el.appendChild(right);
-    historyList.appendChild(el);
-  }
+async function connectWallet(auto=false){
+ if(!window.ethereum){setStatus("MetaMask not found");return;}
+ web3=new Web3(window.ethereum);
+ try{
+   const accs=auto?await window.ethereum.request({method:"eth_accounts"}):await window.ethereum.request({method:"eth_requestAccounts"});
+   if(!accs.length){if(!auto)setStatus("Please connect wallet");return;}
+   userAddr=accs[0];
+   tiffyContract=new web3.eth.Contract(ERC20_ABI,TIFFY_ADDRESS);
+   swapContract=new web3.eth.Contract(SWAP_ABI,SWAP_CONTRACT_ADDRESS);
+   connectBtn.textContent="✅ Connected";
+   estimateBtn.disabled=false;redeemBtn.disabled=false;
+   skimBtn.disabled=(userAddr.toLowerCase()!==OWNER_ADDRESS);
+   setStatus("Connected: "+userAddr.slice(0,8)+"...");
+   refreshBalances();
+ }catch(e){setStatus("Connect failed: "+e.message);}
 }
 
-/* -----------------------------
-   Wallet & Contracts setup
-   ----------------------------- */
-async function connectWallet(){
-  if(!window.ethereum){ setStatus('No wallet found. Install MetaMask.'); return; }
-  try {
-    web3 = new Web3(window.ethereum);
-    const accounts = await window.ethereum.request({ method:'eth_requestAccounts' });
-    userAddr = accounts[0];
-    networkName.innerText = await getNetworkName();
-    tiffyContract = new web3.eth.Contract(ERC20_ABI, TIFFY_ADDRESS);
-    swapContract = new web3.eth.Contract(SWAP_ABI, SWAP_CONTRACT_ADDRESS);
-    if(TUSD_TOKEN_ADDRESS){ tusdContract = new web3.eth.Contract(ERC20_ABI, TUSD_TOKEN_ADDRESS); }
-    // read decimals
-    try { tiffyDecimals = parseInt(await tiffyContract.methods.decimals().call()); } catch(e){ tiffyDecimals = 18; }
-    try { if(tusdContract) tusdDecimals = parseInt(await tusdContract.methods.decimals().call()); } catch(e){ tusdDecimals = 18; }
-    setStatus('Connected: '+userAddr);
-    redeemBtn.disabled = false; estimateBtn.disabled = false;
-    skimBtn.disabled = (userAddr.toLowerCase() !== OWNER_ADDRESS);
-    renderHistory();
-    await refreshBalances();
-    if(pollHandle) clearInterval(pollHandle);
-    pollHandle = setInterval(()=>{ refreshBalances().catch(()=>{}); }, 15000);
-    window.ethereum.on('accountsChanged', accounts => { userAddr = accounts[0] || null; if(!userAddr){ setStatus('Disconnected'); redeemBtn.disabled=true } else { connectWallet(); } });
-    window.ethereum.on('chainChanged', ()=> location.reload());
-  } catch(err){ setStatus('Connect error: '+(err.message||err)); console.error(err); }
-}
-
-async function getNetworkName(){
-  try {
-    const id = await web3.eth.net.getId();
-    if(id===56) return 'BSC Mainnet';
-    if(id===97) return 'BSC Testnet';
-    return 'ChainId:'+id;
-  } catch(e){ return 'Unknown'; }
-}
-
-/* -----------------------------
-   Balances & Preview
-   ----------------------------- */
 async function refreshBalances(){
-  if(!userAddr || !tiffyContract) return;
-  try {
-    const raw = await tiffyContract.methods.balanceOf(userAddr).call();
-    const bn = toBN(raw);
-    tiffyBalEl.innerText = humanAmount(bn, tiffyDecimals) + ' TIFFY';
-    // user's TUSD balance (best-effort)
-    if(tusdContract){
-      try {
-        const rawT = await tusdContract.methods.balanceOf(userAddr).call();
-        tusdBalEl.innerText = humanAmount(toBN(rawT), tusdDecimals) + ' TUSD';
-      } catch(e){ tusdBalEl.innerText = 'N/A'; }
-    } else {
-      tusdBalEl.innerText = 'N/A';
-    }
-  } catch(e){
-    console.error(e);
-    tiffyBalEl.innerText = 'N/A';
-    tusdBalEl.innerText = 'N/A';
-  }
-  updatePreview();
+ try{
+   const bal=await tiffyContract.methods.balanceOf(userAddr).call();
+   const human=(+web3.utils.fromWei(bal)).toFixed(4);
+   tiffyBalEl.innerText=human+" TIFFY";
+ }catch(e){tiffyBalEl.innerText="N/A";}
+ tusdBalEl.innerText="—";
 }
 
-/* Preview calculation: careful BN arithmetic
-   tusdUnits = tiffyUnits * RATE * 10^tusdDecimals / 10^tiffyDecimals
-*/
-function updatePreview(){
-  const val = parseFloat(burnInput.value) || 0;
-  // show human preview simply: tusd = val * RATE
-  const preview = val * RATE;
-  tusdPreview.innerText = preview.toFixed(6).replace(/\.?0+$/,'') + ' TUSD';
-}
-
-/* -----------------------------
-   Gas estimation
-   ----------------------------- */
-async function estimateGasForRedeem(amountUnits){
-  if(!userAddr || !swapContract) throw new Error('Not connected');
-  // build method call data
-  const data = swapContract.methods.redeemTiffy(amountUnits.toString()).encodeABI();
-  const tx = { from: userAddr, to: SWAP_CONTRACT_ADDRESS, data: data };
-  // estimate gas
-  const gas = await web3.eth.estimateGas(tx);
-  const gasPrice = await web3.eth.getGasPrice();
-  const fee = toBN(gas).mul(toBN(gasPrice));
-  // convert fee to native (BN -> human)
-  const nativeDecimals = 18;
-  const feeHuman = (fee.div(pow10(nativeDecimals-6)).toString()/1000000).toFixed(6); // careful convert
-  return { gas, gasPrice, fee, feeHuman };
-}
-
-/* -----------------------------
-   Redeem flow (approve -> redeem)
-   ----------------------------- */
 async function redeemFlow(){
-  if(!userAddr) { setStatus('Connect your wallet'); return; }
-  const amt = parseFloat(burnInput.value);
-  if(!amt || amt <= 0){ setStatus('Enter a positive amount'); return; }
-  try {
-    redeemBtn.disabled = true; estimateBtn.disabled = true; setStatus('Preparing tx...');
-    // compute amountUnits (BN)
-    const amtUnits = toBN(Math.round(amt * (10**6))).mul(pow10(tiffyDecimals)).div(pow10(6)); // safe decimal conversion
-    // calculate tusdUnits for record: tusdUnits = amtUnits * RATE * 10^tusdDecimals / 10^tiffyDecimals
-    const tusdUnits = amtUnits.mul(toBN(RATE)).mul(pow10(tusdDecimals)).div(pow10(tiffyDecimals));
-    const tusdHuman = humanAmount(tusdUnits, tusdDecimals);
-
-    // store pending tx in local history before sending
-    const record = { txHash:null, type:'BURN', amount: amt.toString(), tusd: tusdHuman, ts: Date.now(), status:'pending' };
-    storeTx(record);
-
-    // check allowance
-    const tiffy = tiffyContract;
-    const allowance = toBN(await tiffy.methods.allowance(userAddr, SWAP_CONTRACT_ADDRESS).call());
-    if(allowance.lt(amtUnits)){
-      setStatus('Sending approve for exact amount (confirm wallet)...');
-      const approveTx = await tiffy.methods.approve(SWAP_CONTRACT_ADDRESS, amtUnits.toString()).send({ from: userAddr });
-      setStatus('Approve confirmed: ' + approveTx.transactionHash);
-      // small delay to allow chain to propagate
-      await sleep(1200);
-    }
-
-    // estimate gas and show to user (quick final estimate)
-    setStatus('Estimating gas (final)...');
-    const est = await estimateGasForRedeem(amtUnits);
-    gasInfo.innerText = `Estimated gas: ${est.gas} • gasPrice: ${est.gasPrice} • est fee (native): ${est.feeHuman}`;
-    if(!confirm(`About to send burn tx:\nBurn ${amt} TIFFY → Receive ${tusdHuman} TUSD\nEst gas: ${est.gas}, est fee (native): ${est.feeHuman}\nProceed?`)){
-      setStatus('User cancelled');
-      redeemBtn.disabled=false; estimateBtn.disabled=false;
-      return;
-    }
-
-    setStatus('Sending redeemTiffy transaction (confirm wallet)...');
-    const sendTx = swapContract.methods.redeemTiffy(amtUnits.toString());
-    const receipt = await sendTx.send({ from: userAddr, gas: Math.floor(est.gas * 1.2), gasPrice: est.gasPrice });
-
-    // update local history: find first pending record and update
-    const txHash = receipt.transactionHash;
-    record.txHash = txHash;
-    record.status = 'confirmed';
-    record.updated = Date.now();
-    storeTx(record);
-    updateTxStatus(txHash, 'confirmed');
-    setStatus(`Burn confirmed: ${txHash}`);
-    await refreshBalances();
-  } catch(err){
-    console.error(err);
-    setStatus('Tx failed: ' + (err.message || err));
-    // mark most recent pending tx as failed
-    try {
-      const list = JSON.parse(localStorage.getItem('tiffy_history')||'[]');
-      if(list.length>0 && list[0].status==='pending'){ list[0].status = 'failed'; localStorage.setItem('tiffy_history', JSON.stringify(list)); renderHistory(); }
-    } catch(e){}
-  } finally {
-    redeemBtn.disabled = false; estimateBtn.disabled = false;
-  }
+ const amt=parseFloat(burnInput.value);if(!amt||amt<=0){setStatus("Enter amount");return;}
+ try{
+   const units=web3.utils.toWei(amt.toString());
+   setStatus("Approving TIFFY...");
+   await tiffyContract.methods.approve(SWAP_CONTRACT_ADDRESS,units).send({from:userAddr});
+   setStatus("Burning "+amt+" TIFFY...");
+   const tx=await swapContract.methods.redeemTiffy(units).send({from:userAddr});
+   storeTx({type:"Burn",amount:amt,tusd:amt*RATE,ts:Date.now(),status:"confirmed"});
+   setStatus("Burn confirmed!");
+   refreshBalances();
+ }catch(e){setStatus("Error: "+e.message);}
 }
 
-/* -----------------------------
-   Owner skim flow
-   ----------------------------- */
-async function ownerSkim(){
-  if(!userAddr) { setStatus('Connect wallet'); return; }
-  if(userAddr.toLowerCase() !== OWNER_ADDRESS){ setStatus('Not owner'); return; }
-  try {
-    skimBtn.disabled = true; setStatus('Calling swapSkimToUSDT...');
-    const rec = await swapContract.methods.swapSkimToUSDT().send({ from: userAddr });
-    const txHash = rec.transactionHash;
-    storeTx({txHash:txHash, type:'SKIM', amount:'-', tusd:'-', ts:Date.now(), status:'confirmed'});
-    setStatus('Skim tx: ' + txHash);
-  } catch(e){ setStatus('Skim failed: ' + (e.message||e)); } finally { skimBtn.disabled = false; }
-}
-
-/* -----------------------------
-   UI wiring
-   ----------------------------- */
-connectBtn.addEventListener('click', connectWallet);
-refreshBtn.addEventListener('click', ()=>refreshBalances().catch(()=>{}));
-burnInput.addEventListener('input', updatePreview);
-estimateBtn.addEventListener('click', async ()=>{
-  try {
-    if(!userAddr){ setStatus('Connect wallet'); return; }
-    const amt = parseFloat(burnInput.value) || 0;
-    if(amt<=0){ setStatus('Enter amount to estimate'); return; }
-    // amtUnits
-    const amtUnits = toBN(Math.round(amt * (10**6))).mul(pow10(tiffyDecimals)).div(pow10(6));
-    const est = await estimateGasForRedeem(amtUnits);
-    gasInfo.innerText = `Estimated gas: ${est.gas} • gasPrice: ${est.gasPrice} • est fee (native): ${est.feeHuman}`;
-    setStatus('Gas estimate ready');
-  } catch(e){ setStatus('Estimate failed: ' + (e.message||e)); console.error(e); }
-});
-redeemBtn.addEventListener('click', redeemFlow);
-skimBtn.addEventListener('click', ownerSkim);
-clearHistoryBtn.addEventListener('click', ()=>{ localStorage.removeItem('tiffy_history'); renderHistory(); setStatus('History cleared'); });
-copyAddr.addEventListener('click', ()=>{ navigator.clipboard.writeText(SWAP_CONTRACT_ADDRESS); setStatus('Swap address copied'); });
-
-/* -----------------------------
-   On load
-   ----------------------------- */
-(function init(){
-  renderHistory();
-  setStatus('Idle — connect wallet');
-})();
+burnInput.addEventListener("input",()=>{const v=parseFloat(burnInput.value)||0;tusdPreview.textContent=(v*RATE).toFixed(4)+" TUSD";});
+connectBtn.addEventListener("click",()=>connectWallet(false));
+redeemBtn.addEventListener("click",redeemFlow);
+clearHistory.addEventListener("click",()=>{localStorage.removeItem("tiffy_history");renderHistory();});
+renderHistory();
+window.addEventListener("load",()=>connectWallet(true)); // auto-connect attempt
 </script>
 </body>
 </html>
