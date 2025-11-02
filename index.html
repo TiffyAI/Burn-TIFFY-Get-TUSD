@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>TiffyAI Empire - Burn & Cash Out</title>
   <style>
     body {
@@ -13,112 +13,289 @@
       padding: 20px;
     }
     h1 {
-      font-size: 2.5em;
+      font-size: 2.2em;
       text-shadow: 0 0 10px #00ff88;
     }
     button {
       background: #00ff88;
       color: #1a1a1a;
       border: none;
-      padding: 15px 30px;
-      margin: 10px;
-      font-size: 1.2em;
+      padding: 12px 22px;
+      margin: 8px;
+      font-size: 1.05em;
       cursor: pointer;
       border-radius: 5px;
-      transition: all 0.3s;
+      transition: all 0.2s;
     }
-    button:hover {
+    button[disabled] { opacity: 0.5; cursor: not-allowed; }
+    button:hover:not([disabled]) {
       background: #ff0077;
       color: #fff;
       box-shadow: 0 0 15px #ff0077;
     }
     #status {
       margin-top: 20px;
-      font-size: 1.1em;
+      font-size: 1.0em;
       color: #fff;
+      white-space: pre-wrap;
     }
-    a {
-      color: #00ff88;
-      text-decoration: none;
-    }
-    a:hover {
-      color: #ff0077;
-    }
+    a { color: #00ff88; text-decoration: none; }
+    a:hover { color: #ff0077; }
+    .small { font-size: 0.9em; color: #cccccc; }
   </style>
 </head>
 <body>
   <h1>TiffyAI Empire 🔥</h1>
-  <p>Burn TiffyAI, Get TUSD, Cash Out to USDT. No Scams. Verified: <a href="https://bscscan.com/address/0xEc7B2ebe558424d0d3929c581e0018d2bEDe8eF6" target="_blank">BSCScan</a></p>
-  <button onclick="connectWallet()">Connect Wallet</button>
-  <button onclick="redeemTiffy()" id="redeemBtn" disabled>Burn 1 TiffyAI → 20 TUSD</button>
-  <button onclick="swapSkim()" id="skimBtn" disabled>Cash Out Skim (Owner)</button>
+  <p class="small">Burn TiffyAI → Receive TUSD (peg 20:1). Verify contract: <a id="explorerLink" href="#" target="_blank">BSCScan</a></p>
+
+  <div>
+    <button id="connectBtn">Connect Wallet</button>
+    <button id="redeemBtn" disabled>Burn 1 TiffyAI → 20 TUSD</button>
+    <button id="skimBtn" disabled>Cash Out Skim (Owner)</button>
+  </div>
+
   <div id="status">Connect your wallet to start!</div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/4.3.0/web3.min.js"></script>
+  <!-- Web3 v1.x CDN (stable) -->
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
   <script>
-    const TUSD_ADDRESS = "0xEc7B2ebe558424d0d3929c581e0018d2bEDe8eF6";
+    /******************************
+     * CONFIG - update addresses *
+     ******************************/
+    const SWAP_CONTRACT_ADDRESS = "0xEc7B2ebe558424d0d3929c581e0018d2bEDe8eF6"; // your swap contract (where redeemTiffy exists)
     const TIFFY_ADDRESS = "0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";
-    const TUSD_ABI = [
-      "function redeemTiffy(uint256 amount) external",
-      "function swapSkimToUSDT() external",
-      "function balanceOf(address account) view returns (uint256)"
-    ];
-    const TIFFY_ABI = [
-      "function balanceOf(address account) view returns (uint256)",
-      "function allowance(address owner, address spender) view returns (uint256)",
-      "function approve(address spender, uint256 amount) external returns (bool)"
-    ];
-    let web3, tusdContract, tiffyContract, userAddress;
+    const OWNER_ADDRESS = "0x2a234d5cc7431b824723c84c8605fd3968bf0255".toLowerCase(); // owner address for UI hint only
 
+    // Minimal ABIs (ERC20 + swap controller methods)
+    const ERC20_MIN_ABI = [
+      { "constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function" },
+      { "constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"","type":"uint8"}],"type":"function" },
+      { "constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function" },
+      { "constant":true,"inputs":[{"name":"_owner","type":"address"},{"name":"_spender","type":"address"}],"name":"allowance","outputs":[{"name":"remaining","type":"uint256"}],"type":"function" }
+    ];
+
+    const SWAP_ABI = [
+      { "constant": false, "inputs":[{"name":"amount","type":"uint256"}], "name":"redeemTiffy","outputs":[], "type":"function" },
+      { "constant": false, "inputs":[],"name":"swapSkimToUSDT","outputs":[],"type":"function" },
+      { "constant": true, "inputs":[{"name":"account","type":"address"}],"name":"balanceOf","outputs":[{"name":"","type":"uint256"}],"type":"function" }
+    ];
+
+    /******************************
+     * App State
+     ******************************/
+    let web3;
+    let userAddress = null;
+    let tiffyContract, swapContract;
+    let tiffyDecimals = 18;
+    let loading = false;
+
+    const connectBtn = document.getElementById('connectBtn');
+    const redeemBtn = document.getElementById('redeemBtn');
+    const skimBtn = document.getElementById('skimBtn');
+    const statusDiv = document.getElementById('status');
+    const explorerLink = document.getElementById('explorerLink');
+    explorerLink.href = `https://bscscan.com/address/${SWAP_CONTRACT_ADDRESS}`;
+    explorerLink.innerText = `BscScan: ${SWAP_CONTRACT_ADDRESS}`;
+
+    /******************************
+     * Utilities
+     ******************************/
+    function setStatus(text) {
+      statusDiv.innerText = text;
+    }
+    function bn(value) { return web3.utils.toBN(value); }
+
+    /******************************
+     * Connect / Setup
+     ******************************/
     async function connectWallet() {
+      if (!window.ethereum) {
+        setStatus("No wallet found. Install MetaMask or another Web3 wallet.");
+        return;
+      }
+      try {
+        web3 = new Web3(window.ethereum);
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        userAddress = accounts[0];
+        setupContracts();
+        listenForAccountChange();
+        await refreshUI();
+        setStatus(`Connected: ${userAddress}`);
+      } catch (err) {
+        setStatus(`Wallet connection error: ${err.message || err}`);
+        console.error(err);
+      }
+    }
+
+    function listenForAccountChange() {
+      window.ethereum.on('accountsChanged', (accounts) => {
+        if (accounts.length === 0) {
+          userAddress = null;
+          redeemBtn.disabled = true;
+          skimBtn.disabled = true;
+          setStatus('Disconnected. Connect your wallet.');
+        } else {
+          userAddress = accounts[0];
+          refreshUI();
+        }
+      });
+      window.ethereum.on('chainChanged', (chainId) => {
+        // simple refresh - you may want to handle this gracefully
+        window.location.reload();
+      });
+    }
+
+    function setupContracts() {
+      tiffyContract = new web3.eth.Contract(ERC20_MIN_ABI, TIFFY_ADDRESS);
+      swapContract = new web3.eth.Contract(SWAP_ABI, SWAP_CONTRACT_ADDRESS);
+    }
+
+    /******************************
+     * Refresh UI (balances, buttons)
+     ******************************/
+    async function refreshUI() {
+      if (!userAddress || !web3) return;
+      try {
+        // Attempt to read decimals (safe fallback to 18)
+        try {
+          tiffyDecimals = parseInt(await tiffyContract.methods.decimals().call());
+        } catch (err) {
+          console.warn("decimals() failed, defaulting to 18", err);
+          tiffyDecimals = 18;
+        }
+
+        const rawBal = await tiffyContract.methods.balanceOf(userAddress).call();
+        const threshold = web3.utils.toBN(web3.utils.toWei('1', 'ether')); // we treat 1 TIFFY as 1*10^18 for UI threshold
+        const rawBalBN = web3.utils.toBN(rawBal);
+
+        // Convert to human readable using token decimals
+        const humanBal = formatTokenAmount(rawBalBN, tiffyDecimals);
+        setStatus(`Connected: ${userAddress}\nTiffyAI Balance: ${humanBal} TIFFY`);
+
+        // Enable redeem if user has >= 1 TIFFY (note: we assume 1 TIFFY uses 18 decimal basis; if TIFFY decimals != 18, threshold logic should match)
+        const oneTiffy = web3.utils.toBN( web3.utils.toWei('1', 'ether') ); // **UI** threshold in wei(1) for tokens with 18 decimals
+        const hasOne = rawBalBN.gte(oneTiffy);
+
+        redeemBtn.disabled = !hasOne || loading;
+
+        // Owner button: UI-only check; contract should enforce owner onchain
+        skimBtn.disabled = (userAddress.toLowerCase() !== OWNER_ADDRESS) || loading;
+
+      } catch (err) {
+        console.error(err);
+        setStatus(`Failed to read balances: ${err.message || err}`);
+        redeemBtn.disabled = false; // allow manual attempt if read fails
+      }
+    }
+
+    function formatTokenAmount(bnAmount, decimals) {
+      // returns string with up to 6 decimals for display
+      const base = web3.utils.toBN(10).pow(web3.utils.toBN(decimals));
+      const whole = bnAmount.div(base).toString();
+      const fraction = bnAmount.mod(base).toString().padStart(decimals, '0').slice(0, 6); // show 6 decimals
+      return `${whole}.${fraction}`.replace(/\.?0+$/, '');
+    }
+
+    /******************************
+     * Redeem flow
+     ******************************/
+    async function redeemTiffy() {
+      if (!userAddress) { setStatus('Connect wallet first'); return; }
+      if (loading) return;
+      try {
+        loading = true;
+        redeemBtn.disabled = true;
+        skimBtn.disabled = true;
+
+        // Confirm user intent (simple confirm; integrate a nicer modal if desired)
+        if (!confirm('Burn 1 TiffyAI and receive 20 TUSD? This will call approve and then redeemTiffy on the contract.')) {
+          setStatus('User cancelled.');
+          loading = false;
+          await refreshUI();
+          return;
+        }
+
+        setStatus('1) Checking allowance...');
+        // APPROVE flow: Approve swap contract to pull 1 TIFFY (using 18-decimals assumption)
+        const amountToBurn = web3.utils.toBN(web3.utils.toWei('1', 'ether')); // assumes 1 TIFFY = 1e18 units
+        const currentAllowance = await tiffyContract.methods.allowance(userAddress, SWAP_CONTRACT_ADDRESS).call();
+        const allowBN = web3.utils.toBN(currentAllowance);
+
+        if (allowBN.lt(amountToBurn)) {
+          setStatus('2) Sending approve transaction (please confirm in wallet)...');
+          const approveTx = await tiffyContract.methods.approve(SWAP_CONTRACT_ADDRESS, amountToBurn.toString())
+            .send({ from: userAddress });
+
+          setStatus(`Approve tx sent: ${approveTx.transactionHash}\nWaiting for confirmation...`);
+        } else {
+          setStatus('Allowance sufficient, skipping approve...');
+        }
+
+        setStatus('3) Calling redeemTiffy (burn) on swap contract (confirm in wallet)...');
+        const tx = await swapContract.methods.redeemTiffy(amountToBurn.toString())
+          .send({ from: userAddress });
+
+        setStatus(`Success! redeemTiffy tx: ${tx.transactionHash}\nCheck explorer for final TUSD balance.`);
+      } catch (err) {
+        console.error(err);
+        const message = (err && err.message) ? err.message : String(err);
+        setStatus(`Transaction failed or rejected: ${message}`);
+      } finally {
+        loading = false;
+        await refreshUI();
+      }
+    }
+
+    /******************************
+     * Owner skim flow
+     ******************************/
+    async function swapSkim() {
+      if (!userAddress) { setStatus('Connect wallet first'); return; }
+      if (userAddress.toLowerCase() !== OWNER_ADDRESS) {
+        setStatus('You are not the configured owner (UI-only check).');
+        return;
+      }
+      if (loading) return;
+
+      try {
+        if (!confirm('This will call swapSkimToUSDT() on the swap contract. Proceed?')) return;
+        loading = true; redeemBtn.disabled = true; skimBtn.disabled = true;
+        setStatus('Calling swapSkimToUSDT (confirm in wallet)...');
+        const tx = await swapContract.methods.swapSkimToUSDT().send({ from: userAddress });
+        setStatus(`Skim cashed out. Tx: ${tx.transactionHash}`);
+      } catch (err) {
+        console.error(err);
+        setStatus(`Skim call failed: ${err.message || err}`);
+      } finally {
+        loading = false;
+        await refreshUI();
+      }
+    }
+
+    /******************************
+     * Wire up buttons
+     ******************************/
+    connectBtn.addEventListener('click', connectWallet);
+    redeemBtn.addEventListener('click', redeemTiffy);
+    skimBtn.addEventListener('click', swapSkim);
+
+    // Auto connect if wallet already authorized
+    (async function autoConnectIfAuthorized() {
       if (window.ethereum) {
         try {
           web3 = new Web3(window.ethereum);
-          await window.ethereum.request({ method: "eth_requestAccounts" });
-          userAddress = (await web3.eth.getAccounts())[0];
-          tusdContract = new web3.eth.Contract(TUSD_ABI, TUSD_ADDRESS);
-          tiffyContract = new web3.eth.Contract(TIFFY_ABI, TIFFY_ADDRESS);
-          let tiffyBalance;
-          try {
-            tiffyBalance = await tiffyContract.methods.balanceOf(userAddress).call();
-            document.getElementById("status").innerText = `Connected: ${userAddress}\nTiffyAI Balance: ${web3.utils.fromWei(tiffyBalance, "ether")} TIFFY`;
-            document.getElementById("redeemBtn").disabled = tiffyBalance < web3.utils.toWei("1", "ether");
-            document.getElementById("skimBtn").disabled = userAddress.toLowerCase() !== "0x2a234d5cc7431b824723c84c8605fd3968bf0255".toLowerCase();
-          } catch (error) {
-            console.error("BalanceOf Error:", error);
-            document.getElementById("status").innerText = `TiffyAI balance check failed: ${error.message}. Try manual burn.`;
-            document.getElementById("redeemBtn").disabled = false; // Allow manual burn
+          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+          if (accounts && accounts.length > 0) {
+            userAddress = accounts[0];
+            setupContracts();
+            await refreshUI();
+            setStatus(`Connected (readonly): ${userAddress}`);
           }
-        } catch (error) {
-          document.getElementById("status").innerText = `Error: ${error.message}`;
+        } catch (err) {
+          // ignore
         }
-      } else {
-        document.getElementById("status").innerText = "Install MetaMask!";
       }
-    }
-
-    async function redeemTiffy() {
-      try {
-        document.getElementById("status").innerText = "Approving TiffyAI for burning...";
-        await tiffyContract.methods.approve(TUSD_ADDRESS, web3.utils.toWei("1", "ether")).send({ from: userAddress });
-        document.getElementById("status").innerText = "Burning 1 TiffyAI...";
-        await tusdContract.methods.redeemTiffy(web3.utils.toWei("1", "ether")).send({ from: userAddress });
-        const tusdBalance = await tusdContract.methods.balanceOf(userAddress).call();
-        document.getElementById("status").innerText = `Success! You got 20 TUSD. Balance: ${web3.utils.fromWei(tusdBalance, "ether")} TUSD`;
-      } catch (error) {
-        document.getElementById("status").innerText = `Error: ${error.message}`;
-      }
-    }
-
-    async function swapSkim() {
-      try {
-        document.getElementById("status").innerText = "Cashing out skim to USDT...";
-        await tusdContract.methods.swapSkimToUSDT().send({ from: userAddress });
-        document.getElementById("status").innerText = "Skim cashed out! Check skimWallet for USDT.";
-      } catch (error) {
-        document.getElementById("status").innerText = `Error: ${error.message}`;
-      }
-    }
+    })();
   </script>
 </body>
 </html>
