@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<title>TiffyAI Empire — Market-Valued Burns</title>
+<style>
+  :root{--electric-blue:#00d9ff;--shocking-pink:#ff007f;--glass:rgba(255,255,255,0.04)}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:18px;background:linear-gradient(135deg,#07030b,#12002b);font-family:Inter,Arial,sans-serif;color:#e6fbff}
+  .container{width:100%;max-width:520px}
+  h1{margin:0 0 8px;color:var(--shocking-pink);text-shadow:0 0 18px var(--shocking-pink),0 0 36px var(--electric-blue);font-size:20px;text-align:center}
+  .card{background:var(--glass);border-radius:14px;padding:14px;border:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(8px);box-shadow:0 10px 30px rgba(0,0,0,0.6);margin-bottom:14px}
+  .small{font-size:13px;color:#cfe;margin-bottom:8px}
+  label{display:block;margin-top:8px;margin-bottom:6px;font-size:13px;color:#bfe}
+  input[type=number],.input{width:100%;padding:11px 12px;border-radius:10px;border:none;background:rgba(0,0,0,0.45);color:#fff;font-size:15px;outline:none}
+  .btn{width:100%;padding:12px;border-radius:10px;border:none;cursor:pointer;font-weight:700;color:#071017;margin-top:10px;background:linear-gradient(90deg,var(--electric-blue),var(--shocking-pink))}
+  .btn[disabled]{opacity:.45;cursor:not-allowed}
+  .row{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+  .balance{color:var(--electric-blue);font-weight:700}
+  .tusd{color:var(--shocking-pink);font-weight:700}
+  .gas{margin-top:8px;padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);font-size:13px}
+  .history{max-height:220px;overflow:auto;padding:8px;border-radius:8px;background:rgba(0,0,0,0.2);margin-top:8px}
+  .tx{padding:8px;border-bottom:1px dashed rgba(255,255,255,0.03);font-size:13px;color:#def}
+  .link{color:var(--electric-blue);text-decoration:none}
+  @media(max-width:420px){.card{padding:12px}h1{font-size:18px}}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>TiffyAI Empire ⚡ — Market Value Burns</h1>
+
+  <div class="card">
+    <div class="small" style="text-align:center">
+      Use live market price to compute required burn for your desired TUSD value.<br>
+      Contract: <a id="explorerLink" class="link" href="#" target="_blank" rel="noopener">(swap contract)</a>
+    </div>
+
+    <button id="connectBtn" class="btn">🔗 Connect Wallet</button>
+
+    <div style="margin-top:10px">
+      <div class="small">Live Price (1 TIFFY → TUSD)</div>
+      <div id="livePrice" class="tusd">loading…</div>
+    </div>
+
+    <label>How many TIFFY's market-value do you want to cash out? (X)</label>
+    <input id="valueTIFFY" type="number" step="0.0001" min="0.0001" placeholder="Enter number of TIFFY to value (e.g. 1)"/>
+
+    <div class="row" style="margin-top:8px">
+      <div class="small">Market-value (TUSD)</div>
+      <div id="marketValue" class="tusd">—</div>
+    </div>
+
+    <div class="row" style="margin-top:6px">
+      <div class="small">Required TIFFY to burn (given current contract behavior)</div>
+      <div id="reqBurn" class="balance">—</div>
+    </div>
+
+    <div class="small" style="margin-top:8px;color:#ffd">Important: Because your deployed contract currently mints using a fixed multiplier, to receive the market-value TUSD you will need to burn the computed TIFFY amount shown above. The UI will compute that for you — it does not change the on-chain contract.</div>
+
+    <button id="estimateBtn" class="btn" disabled>⚡ Estimate Gas</button>
+    <button id="redeemBtn" class="btn" disabled>🔥 Burn Required TIFFY → Redeem Market TUSD</button>
+
+    <div class="row" style="margin-top:10px">
+      <div><div class="small">Your TIFFY</div><div id="tiffyBal" class="balance">—</div></div>
+      <div><div class="small">Your TUSD</div><div id="tusdBal" class="tusd">—</div></div>
+    </div>
+
+    <div id="gasInfo" class="gas">Gas info will show here</div>
+    <div id="status" class="small" style="margin-top:8px">Status: idle</div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="small">Local Transaction History</div>
+      <button id="clearHistory" class="btn" style="width:auto;padding:6px 10px;background:rgba(255,255,255,0.06)">Clear</button>
+    </div>
+    <div id="historyList" class="history"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+<script>
+/* ========== CONFIG ========== */
+const PRICE_URL = 'https://tiffyai.github.io/TIFFY-Market-Value/price.json';
+const SWAP_CONTRACT_ADDRESS = "0xEc7B2ebe558424d0d3929c581e0018d2bEDe8eF6";
+const TIFFY_ADDRESS = "0xE488253DD6B4D31431142F1b7601C96f24Fb7dd5";
+const OWNER_ADDRESS = "0x2a234d5cc7431b824723c84c8605fd3968bf0255".toLowerCase();
+
+// Contract currently mints at onchainMultiplier = 20 (this is the fixed value in your deployed contract)
+const ONCHAIN_MULTIPLIER = 20;
+
+/* ========== ABIs ========== */
+const ERC20_ABI = [
+  {"constant":true,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function"},
+  {"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"type":"function"}
+];
+const SWAP_ABI = [
+  {"inputs":[{"name":"amount","type":"uint256"}],"name":"redeemTiffy","outputs":[],"stateMutability":"nonpayable","type":"function"},
+  {"inputs":[],"name":"swapSkimToUSDT","outputs":[],"stateMutability":"nonpayable","type":"function"}
+];
+
+/* ========== UI elements & state ========== */
+const connectBtn = document.getElementById('connectBtn');
+const estimateBtn = document.getElementById('estimateBtn');
+const redeemBtn = document.getElementById('redeemBtn');
+const valueTIFFY = document.getElementById('valueTIFFY');
+const livePriceEl = document.getElementById('livePrice');
+const marketValueEl = document.getElementById('marketValue');
+const reqBurnEl = document.getElementById('reqBurn');
+const tiffyBalEl = document.getElementById('tiffyBal');
+const tusdBalEl = document.getElementById('tusdBal');
+const gasInfo = document.getElementById('gasInfo');
+const statusEl = document.getElementById('status');
+const historyList = document.getElementById('historyList');
+const clearHistoryBtn = document.getElementById('clearHistory');
+const explorerLink = document.getElementById('explorerLink');
+explorerLink.href = `https://bscscan.com/address/${SWAP_CONTRACT_ADDRESS}`;
+
+// state
+let web3, userAddr, tiffyContract, swapContract;
+let lastPrice = null;
+
+/* ========== helpers ========== */
+function setStatus(msg){ statusEl.innerText = 'Status: ' + msg; }
+function storeTx(record){
+  const list = JSON.parse(localStorage.getItem('tiffy_history')||'[]');
+  list.unshift(record);
+  if(list.length>200) list.pop();
+  localStorage.setItem('tiffy_history', JSON.stringify(list));
+  renderHistory();
+}
+function renderHistory(){
+  const list = JSON.parse(localStorage.getItem('tiffy_history')||'[]');
+  if(!list.length){ historyList.innerHTML = '<div class="small">No history yet</div>'; return; }
+  historyList.innerHTML = list.map(r=>{
+    return `<div class="tx"><div style="font-weight:700">${r.type} ${r.amount} TIFFY → ${r.tusd} TUSD</div>
+      <div class="small">${new Date(r.ts).toLocaleString()} • ${r.status}</div>
+      <div style="margin-top:6px;"><a class="link" href="https://bscscan.com/tx/${(r.txHash||'')}" target="_blank">${r.txHash? r.txHash.slice(0,10)+'...' : 'pending'}</a></div></div>`;
+  }).join('');
+}
+
+/* ========== fetch price ========== */
+async function fetchPrice(){
+  try{
+    const res = await fetch(PRICE_URL, {cache:'no-store'});
+    if(!res.ok) throw new Error('Price fetch failed: '+res.status);
+    const j = await res.json();
+    // expecting JSON like { "price": 15735 } or similar. adapt if your JSON shape differs.
+    const p = Number(j.price ?? j.value ?? j.tiffyPrice ?? 0);
+    if(!p || isNaN(p)){ livePriceEl.innerText = 'invalid price'; lastPrice = null; return; }
+    lastPrice = p;
+    livePriceEl.innerText = `${p.toLocaleString()} TUSD`;
+    recompute();
+  }catch(e){
+    lastPrice = null;
+    livePriceEl.innerText = 'price error';
+    console.error(e);
+  }
+}
+
+/* ========== compute required burn (given onchain multiplier) =========
+   desired_TUSD = price * X
+   requiredBurnTokens = (desired_TUSD) / ONCHAIN_MULTIPLIER
+   = (price * X) / ONCHAIN_MULTIPLIER
+*/
+function recompute(){
+  const X = Number(valueTIFFY.value) || 0;
+  if(!lastPrice || X <= 0){ marketValueEl.innerText = '—'; reqBurnEl.innerText = '—'; return; }
+  const desiredTUSD = lastPrice * X;
+  // required burn tokens (may be fractional)
+  const requiredBurn = desiredTUSD / ONCHAIN_MULTIPLIER;
+  marketValueEl.innerText = `${desiredTUSD.toLocaleString(undefined,{maximumFractionDigits:6})} TUSD`;
+  // show both raw and rounded to 6 decimals
+  reqBurnEl.innerText = `${requiredBurn.toLocaleString(undefined,{maximumFractionDigits:6})} TIFFY`;
+}
+
+/* ========== connect wallet ========== */
+async function connectWallet(auto=false){
+  if(!window.ethereum){ setStatus('MetaMask not found'); return; }
+  web3 = new Web3(window.ethereum);
+  try{
+    const accs = auto ? await window.ethereum.request({method:'eth_accounts'}) : await window.ethereum.request({method:'eth_requestAccounts'});
+    if(!accs || accs.length===0){ if(!auto) setStatus('User did not connect'); return; }
+    userAddr = accs[0];
+    tiffyContract = new web3.eth.Contract(ERC20_ABI, TIFFY_ADDRESS);
+    swapContract = new web3.eth.Contract(SWAP_ABI, SWAP_CONTRACT_ADDRESS);
+    connectBtn.innerText = '✅ Connected';
+    estimateBtn.disabled = false; redeemBtn.disabled = false;
+    setStatus('Connected: ' + userAddr.slice(0,10) + '...');
+    await refreshBalances();
+    if(userAddr.toLowerCase() === OWNER_ADDRESS){
+      // owner-specific UI can be enabled
+    }
+    // auto refresh
+    setInterval(()=>refreshBalances().catch(()=>{}), 15000);
+    window.ethereum.on('accountsChanged', accounts => { if(accounts.length) connectWallet(true); else { userAddr=null; setStatus('Disconnected'); } });
+  }catch(e){ setStatus('Connect failed: ' + (e.message||e)); console.error(e); }
+}
+
+/* ========== balances ========== */
+async function refreshBalances(){
+  if(!userAddr || !tiffyContract) return;
+  try{
+    const raw = await tiffyContract.methods.balanceOf(userAddr).call();
+    const human = Number(web3.utils.fromWei(raw)).toFixed(6);
+    tiffyBalEl.innerText = `${human} TIFFY`;
+  }catch(e){ tiffyBalEl.innerText = 'N/A'; }
+  tusdBalEl.innerText = 'N/A';
+}
+
+/* ========== gas estimate & redeem wiring =========
+   We compute the *requiredBurn* (possibly fractional). Then:
+   - compute wei units for that requiredBurn (weiUnits = requiredBurn * 1e18)
+   - Because your contract has the extra 1e18 bug, the UI uses the same earlier workaround:
+     we *approve* the full weiUnits for the contract, then call redeemTiffy(adjusted) where
+     adjusted = floor(weiUnits / 1e18) as integer BN (this is the workaround we've used).
+   WARNING: fractional parts are preserved as wei when approving, but adjusted is integer division.
+*/
+function requiredBurnTokens(){
+  const X = Number(valueTIFFY.value) || 0;
+  if(!lastPrice || X <= 0) return 0;
+  const desiredTUSD = lastPrice * X;
+  const reqBurn = desiredTUSD / ONCHAIN_MULTIPLIER; // in TIFFY tokens (can be fractional)
+  return reqBurn;
+}
+
+function toWeiString(amountTokens){
+  // takes decimal token count and returns wei string
+  return web3.utils.toWei(String(amountTokens));
+}
+
+function adjustedBNForBug(weiStr){
+  // integer division by 1e18 to counter contract extra 1e18 bug
+  const bn = web3.utils.toBN(String(weiStr));
+  return bn.div(web3.utils.toBN('1000000000000000000'));
+}
+
+estimateBtn.addEventListener('click', async ()=>{
+  try{
+    if(!userAddr) { setStatus('Connect wallet'); return; }
+    const req = requiredBurnTokens();
+    if(!req || req <= 0){ setStatus('Enter desired TIFFY to value'); return; }
+    setStatus('Estimating gas...');
+    const wei = toWeiString(req);
+    const adjusted = adjustedBNForBug(wei);
+    if(adjusted.isZero()){ setStatus('Adjusted units == 0 (increase amount)'); return; }
+    const data = swapContract.methods.redeemTiffy(adjusted.toString()).encodeABI();
+    const tx = { from: userAddr, to: SWAP_CONTRACT_ADDRESS, data };
+    const gas = await web3.eth.estimateGas(tx);
+    const gasPrice = await web3.eth.getGasPrice();
+    const feeBN = web3.utils.toBN(gas).mul(web3.utils.toBN(gasPrice));
+    const fee = web3.utils.fromWei(feeBN);
+    gasInfo.innerText = `Estimated gas: ${gas} • gasPrice (wei): ${gasPrice} • est fee (BNB): ${Number(fee).toFixed(6)}`;
+    setStatus('Gas estimate ready');
+  }catch(e){ setStatus('Estimate failed: ' + (e.message||e)); console.error(e); }
+});
+
+redeemBtn.addEventListener('click', async ()=>{
+  try{
+    if(!userAddr) { setStatus('Connect wallet'); return; }
+    const req = requiredBurnTokens();
+    if(!req || req <= 0){ setStatus('Enter desired TIFFY to value'); return; }
+    setStatus('Preparing burn...');
+    // compute wei, adjusted and approve
+    const wei = toWeiString(req); // wei string for requiredBurnTokens
+    const adjusted = adjustedBNForBug(wei);
+    if(adjusted.isZero()){ setStatus('Adjusted units zero — increase amount'); return; }
+
+    // Approve full wei amount so transferFrom will succeed (contract will burn small amount due to bug pattern)
+    setStatus('Approving TIFFY (confirm in wallet)...');
+    await tiffyContract.methods.approve(SWAP_CONTRACT_ADDRESS, wei).send({ from: userAddr });
+
+    if(!confirm(`Confirm: Burn ~${Number(req).toFixed(6)} TIFFY (approx) to receive ~${(lastPrice*(Number(valueTIFFY.value)||0)).toLocaleString()} TUSD (market value). Proceed?`)){
+      setStatus('User cancelled'); return;
+    }
+
+    setStatus('Sending redeemTiffy (confirm in wallet)...');
+    const receipt = await swapContract.methods.redeemTiffy(adjusted.toString()).send({ from: userAddr, gas: undefined });
+    const txHash = receipt.transactionHash || receipt.transactionHash;
+    storeTx({ txHash, type:'BURN', amount: Number(req).toFixed(6), tusd: (lastPrice*(Number(valueTIFFY.value)||0)), ts: Date.now(), status: 'confirmed' });
+    setStatus('Burn tx confirmed: ' + txHash);
+    await refreshBalances();
+  }catch(e){
+    console.error(e);
+    setStatus('Redeem failed: ' + (e.message||e));
+    storeTx({ txHash:null, type:'BURN', amount: (requiredBurnTokens()||0), tusd: (lastPrice*(Number(valueTIFFY.value)||0)), ts: Date.now(), status: 'failed' });
+  }
+});
+
+/* ========== connection wiring & init ========== */
+connectBtn.addEventListener('click', ()=>connectWallet(false));
+valueTIFFY.addEventListener('input', recompute);
+clearHistoryBtn.addEventListener('click', ()=>{ localStorage.removeItem('tiffy_history'); renderHistory(); setStatus('History cleared'); });
+
+async function autoInit(){
+  renderHistory();
+  await fetchPrice();
+  // attempt auto connect if authorized
+  if(window.ethereum){
+    try{
+      web3 = new Web3(window.ethereum);
+      const accs = await window.ethereum.request({ method: 'eth_accounts' });
+      if(accs && accs.length > 0) await connectWallet(true);
+    }catch(e){}
+  }
+  setInterval(()=>fetchPrice().catch(()=>{}), 30000); // refresh price every 30s
+  setStatus('Ready');
+}
+autoInit();
+</script>
+</body>
+</html>
